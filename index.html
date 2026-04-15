@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Pausas Activas </title>
+
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body{
+    transition: 0.3s;
+}
+
+.dark-mode{
+    background:#121212 !important;
+    color:white;
+}
+
+.card{
+    border-radius:15px;
+}
+
+.progress{
+    height:20px;
+}
+
+.tiempo{
+    font-weight:bold;
+    font-size:18px;
+}
+</style>
+
+</head>
+
+<body class="bg-light">
+
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    
+    <div class="card shadow-lg p-4 text-center" style="width:400px;">
+        
+        <h4>🧘 Pausas Activas </h4>
+
+        <input type="text" id="nombre" class="form-control my-2" placeholder="Tu nombre">
+        <input type="number" id="intervalo" class="form-control my-2" value="1" min="1">
+
+        <button class="btn btn-success w-100 my-1" onclick="iniciar()">Iniciar</button>
+        <button class="btn btn-warning w-100 my-1" onclick="pausar()">Pausar</button>
+        <button class="btn btn-danger w-100 my-1" onclick="reiniciar()">Reiniciar</button>
+        <button class="btn btn-primary w-100 my-1" onclick="mostrarHistorial()">Historial</button>
+
+        <button class="btn btn-dark w-100 my-2" onclick="toggleModo()">🌙 Modo Oscuro</button>
+
+        <div id="estado" class="text-muted mt-2">Esperando inicio...</div>
+
+        <div class="progress mt-2">
+            <div class="progress-bar bg-success" id="barra" style="width:0%"></div>
+        </div>
+
+        <div id="tiempo" class="tiempo mt-2"></div>
+
+    </div>
+</div>
+
+
+<div class="modal fade" id="modalHistorial">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5>Historial</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <ul id="listaHistorial" class="list-group"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let historial = JSON.parse(localStorage.getItem("historial")) || [];
+let intervaloJS = null;
+let restante = 0;
+let tiempoTotal = 0;
+let enEjecucion = false;
+
+
+if("Notification" in window){
+    Notification.requestPermission();
+}
+
+function iniciar(){
+    let nombre = document.getElementById("nombre").value;
+    let intervalo = document.getElementById("intervalo").value;
+
+    if(nombre.trim() === ""){
+        alert("Ingresa tu nombre");
+        return;
+    }
+
+    if(enEjecucion) return;
+
+    tiempoTotal = intervalo * 60;
+    restante = tiempoTotal;
+    enEjecucion = true;
+
+    document.getElementById("estado").innerText =
+        "Activo cada " + intervalo + " min";
+
+    intervaloJS = setInterval(() => {
+
+        let min = Math.floor(restante / 60);
+        let seg = restante % 60;
+
+        document.getElementById("tiempo").innerText =
+            `⏳ ${min}:${seg < 10 ? "0"+seg : seg}`;
+
+        let progreso = 100 * (1 - restante / tiempoTotal);
+        document.getElementById("barra").style.width = progreso + "%";
+
+        restante--;
+
+        if(restante < 0){
+            notificar(nombre);
+            restante = tiempoTotal;
+        }
+
+    }, 1000);
+}
+
+function pausar(){
+    clearInterval(intervaloJS);
+    enEjecucion = false;
+    document.getElementById("estado").innerText = "Pausado";
+}
+
+function reiniciar(){
+    clearInterval(intervaloJS);
+    restante = 0;
+    enEjecucion = false;
+    document.getElementById("barra").style.width = "0%";
+    document.getElementById("tiempo").innerText = "";
+    document.getElementById("estado").innerText = "Reiniciado";
+}
+
+function notificar(nombre){
+    let mensaje = `¡Hola ${nombre}! Hora de moverte 💪`;
+
+ 
+    if(Notification.permission === "granted"){
+        new Notification("Pausa Activa", { body: mensaje });
+    } else {
+        alert(mensaje);
+    }
+
+    let hora = new Date().toLocaleTimeString();
+    historial.push(hora + " - Pausa realizada");
+    localStorage.setItem("historial", JSON.stringify(historial));
+
+    document.getElementById("estado").innerText =
+        "Última pausa: " + hora;
+}
+
+function mostrarHistorial(){
+    let lista = document.getElementById("listaHistorial");
+    lista.innerHTML = "";
+
+    if(historial.length === 0){
+        lista.innerHTML = "<li class='list-group-item'>Sin registros</li>";
+    } else {
+        historial.forEach(item => {
+            lista.innerHTML += `<li class="list-group-item">${item}</li>`;
+        });
+    }
+
+    let modal = new bootstrap.Modal(document.getElementById('modalHistorial'));
+    modal.show();
+}
+
+function toggleModo(){
+    document.body.classList.toggle("dark-mode");
+}
+</script>
+
+</body>
+</html>
